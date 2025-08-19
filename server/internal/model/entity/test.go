@@ -1,0 +1,20 @@
+// =================================================================================
+// Code generated and maintained by GoFrame CLI tool. DO NOT EDIT.
+// =================================================================================
+
+package entity
+
+import (
+	"github.com/gogf/gf/v2/os/gtime"
+)
+
+// Test is the golang structure for table test.
+type Test struct {
+	Id        uint64      `json:"id"        orm:"id"         description:""`
+	App       string      `json:"app"       orm:"app"        description:"app"`
+	Owner     string      `json:"owner"     orm:"owner"      description:""`
+	Repo      string      `json:"repo"      orm:"repo"       description:"repo"`
+	Version   string      `json:"version"   orm:"version"    description:"版本号"`
+	CreatedAt *gtime.Time `json:"createdAt" orm:"created_at" description:"创建时间"`
+	UpdatedAt *gtime.Time `json:"updatedAt" orm:"updated_at" description:"更新时间"`
+}
