@@ -90,6 +90,7 @@ func (in *TgstatChannelListInp) Filter(ctx context.Context) (err error) {
 
 // TgstatChannelCrawlerChannelInp 爬虫tgstat频道
 type TgstatChannelCrawlerChannelInp struct {
+	Url string `json:"url"`
 }
 
 func (in *TgstatChannelCrawlerChannelInp) Filter(ctx context.Context) (err error) {
