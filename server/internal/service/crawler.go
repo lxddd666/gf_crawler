@@ -27,8 +27,10 @@ type (
 		Delete(ctx context.Context, in *crawlerin.TgstatChannelDeleteInp) (err error)
 		// View 获取tgstat频道指定信息
 		View(ctx context.Context, in *crawlerin.TgstatChannelViewInp) (res *crawlerin.TgstatChannelViewModel, err error)
-		// CrawlerChannel 抓取tgstat频道
-		CrawlerChannel(ctx context.Context, in *crawlerin.TgstatChannelCrawlerChannelInp) (err error)
+		// CrawlerChannelUrl 抓取tgstat频道
+		CrawlerChannelUrl(ctx context.Context, in *crawlerin.TgstatChannelCrawlerChannelInp) (err error)
+		// StartRating 开始爬虫
+		StartRating(ctx context.Context) error
 	}
 )
 

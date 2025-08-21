@@ -66,7 +66,12 @@ func (c *cTgstatChannel) Delete(ctx context.Context, req *tgstatchannel.DeleteRe
 	return
 }
 
-func (c *cTgstatChannel) CrawlerChannel(ctx context.Context, req *tgstatchannel.CrawlerChannelReq) (res *tgstatchannel.CrawlerChannelRes, err error) {
-	err = service.CrawlerTgstatChannel().CrawlerChannel(ctx, &req.TgstatChannelCrawlerChannelInp)
+func (c *cTgstatChannel) CrawlerChannelUrl(ctx context.Context, req *tgstatchannel.CrawlerChannelUrlReq) (res *tgstatchannel.CrawlerChannelUrlRes, err error) {
+	err = service.CrawlerTgstatChannel().CrawlerChannelUrl(ctx, &req.TgstatChannelCrawlerChannelInp)
+	return
+}
+
+func (c *cTgstatChannel) StartRating(ctx context.Context, req *tgstatchannel.StartRatingReq) (res *tgstatchannel.StartRatingRes, err error) {
+	err = service.CrawlerTgstatChannel().StartRating(ctx)
 	return
 }

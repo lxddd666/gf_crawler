@@ -23,4 +23,6 @@ type TgstatChannel struct {
 	CreatedAt     *gtime.Time // 创建时间
 	UpdatedAt     *gtime.Time // 修改时间
 	DeletedAt     *gtime.Time //
+	Private       interface{} // 是否私有群
+	Comment       interface{} // 评论
 }

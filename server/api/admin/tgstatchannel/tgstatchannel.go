@@ -65,3 +65,19 @@ type CrawlerChannelReq struct {
 
 type CrawlerChannelRes struct {
 }
+
+type CrawlerChannelUrlReq struct {
+	g.Meta `path:"/tgstatChannel/crawlerChannelUrl" method:"post" tags:"tgstat频道" summary:"爬虫tgstat频道所需url"`
+	crawlerin.TgstatChannelCrawlerChannelInp
+}
+
+type CrawlerChannelUrlRes struct {
+}
+
+type StartRatingReq struct {
+	g.Meta `path:"/tgstatChannel/startRating" method:"post" tags:"tgstat频道" summary:"爬虫tgstat开始频道"`
+	crawlerin.TgstatChannelCrawlerChannelInp
+}
+
+type StartRatingRes struct {
+}

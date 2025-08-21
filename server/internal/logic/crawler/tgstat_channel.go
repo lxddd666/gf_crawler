@@ -9,16 +9,21 @@ package crawler
 import (
 	"context"
 	"fmt"
+	"hotgo/internal/consts"
 	"hotgo/internal/dao"
 	"hotgo/internal/library/hgorm/handler"
+	"hotgo/internal/model/do"
 	"hotgo/internal/model/entity"
 	"hotgo/internal/model/input/crawlerin"
 	"hotgo/internal/model/input/form"
 	"hotgo/internal/service"
 	"hotgo/utility/convert"
 	"hotgo/utility/excel"
+	"net/url"
 	"strings"
 	"time"
+
+	"github.com/gogf/gf/v2/text/gstr"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gocolly/colly/v2"
@@ -146,7 +151,7 @@ func (s *sCrawlerTgstatChannel) View(ctx context.Context, in *crawlerin.TgstatCh
 	return
 }
 
-func (s *sCrawlerTgstatChannel) CrawlerChannelGetUrl(ctx context.Context) {
+func (s *sCrawlerTgstatChannel) CrawlerChannelUrl(ctx context.Context, in *crawlerin.TgstatChannelCrawlerChannelInp) (err error) {
 	// 创建默认收集器
 	c := colly.NewCollector()
 	// 向 API 发送请求
@@ -160,14 +165,51 @@ func (s *sCrawlerTgstatChannel) CrawlerChannelGetUrl(ctx context.Context) {
 		if err != nil {
 			return
 		}
-		// 匹配
-		doc.Find("a[class='list-group-item list-group-item-action px-2 pl-lg-3 border-hover-info-right-3px']").Each(func(i int, s *goquery.Selection) {
-			url := s.AttrOr("href", "")
-			fmt.Println(url)
+		// 匹配包含指定类名的a标签
+		doc.Find("a.list-group-item.list-group-item-action.px-2.pl-lg-3.border-hover-info-right-3px").Each(func(i int, s *goquery.Selection) {
+			href := s.AttrOr("href", "")
+			text := strings.TrimSpace(s.Text())
+			fmt.Printf("找到链接: href=%s, text=%s\n", href, text)
+			if href != "" {
+				href = "https://tgstat.com" + href
+				for _, countryUrl := range consts.RatingCountryList {
+					getUrl := href
+					// 国家替换
+					getUrl = gstr.Replace(getUrl, "tgstat.com", countryUrl)
+
+					// 添加 public / private
+					for _, disclosure := range consts.PrivateDisclosure {
+						disclosureUrl := getUrl
+						if disclosure != "" {
+							disclosureUrl = addPathPrefix(disclosureUrl, disclosure)
+						}
+
+						for _, sort := range consts.Sort {
+							disclosureUrl, _ = replaceSortParam(disclosureUrl, sort)
+							list = append(list, entity.TgstatChannelCrawlerUrl{Url: disclosureUrl, Type: consts.CrawlerRating, Status: consts.TaskWait})
+						}
+					}
+				}
+			}
+			// 如果需要将数据添加到list中，可以创建对应的结构体
 		})
-		// 保存收集的数据到数据库
+		// 保存收集的数据到数据库 - 分批插入，每次300个
 		if len(list) > 0 {
-			_, _ = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).InsertIgnore(list)
+			batchSize := 300
+			for i := 0; i < len(list); i += batchSize {
+				end := i + batchSize
+				if end > len(list) {
+					end = len(list)
+				}
+				batch := list[i:end]
+				// 使用正确的DAO操作TgstatChannelCrawlerUrl表
+				_, err := dao.TgstatChannelCrawlerUrl.Ctx(ctx).FieldsEx(dao.TgstatChannelCrawlerUrl.Columns().Id).InsertIgnore(batch)
+				if err != nil {
+					fmt.Printf("批量插入第%d-%d条记录失败: %v\n", i+1, end, err)
+				} else {
+					fmt.Printf("成功插入第%d-%d条记录，共%d条\n", i+1, end, end-i)
+				}
+			}
 		}
 
 	})
@@ -177,8 +219,63 @@ func (s *sCrawlerTgstatChannel) CrawlerChannelGetUrl(ctx context.Context) {
 	return
 }
 
+func addPathPrefix(url, prefix string) string {
+	// 分割URL，获取路径和查询参数
+	parts := strings.SplitN(url, "?", 2)
+	path := parts[0]
+
+	// 如果有查询参数，添加回去
+	var params string
+	if len(parts) > 1 {
+		params = "?" + parts[1]
+	}
+
+	return path + prefix + params
+}
+
+func replaceSortParam(rawURL, newValue string) (string, error) {
+	// 解析URL
+	parsedURL, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+
+	// 获取查询参数
+	queryParams := parsedURL.Query()
+
+	// 设置新的sort参数值
+	queryParams.Set("sort", newValue)
+
+	// 更新查询参数
+	parsedURL.RawQuery = queryParams.Encode()
+
+	return parsedURL.String(), nil
+}
+
+func (s *sCrawlerTgstatChannel) StartRating(ctx context.Context) (err error) {
+	var list []*entity.TgstatChannelCrawlerUrl
+	err = dao.TgstatChannelCrawlerUrl.Ctx(ctx).WhereNot(dao.TgstatChannelCrawlerUrl.Columns().Status, consts.TaskSuccess).Scan(&list)
+	if err != nil {
+		return
+	}
+
+	for _, inp := range list {
+		s.CrawlerChannel(ctx, inp)
+	}
+	return
+}
+
 // CrawlerChannel 抓取tgstat频道
-func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *crawlerin.TgstatChannelCrawlerChannelInp) (err error) {
+func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *entity.TgstatChannelCrawlerUrl) (err error) {
+
+	defer func() {
+		if err != nil {
+			dao.TgstatChannelCrawlerUrl.Ctx(ctx).Fields(dao.TgstatChannelCrawlerUrl.Columns().Status, dao.TgstatChannelCrawlerUrl.Columns().Comment).WherePri(in.Id).Data(do.TgstatChannelCrawlerUrl{Comment: err.Error(), Status: consts.TaskFail}).Update()
+		} else {
+			dao.TgstatChannelCrawlerUrl.Ctx(ctx).Fields(dao.TgstatChannelCrawlerUrl.Columns().Status).WherePri(in.Id).Data(do.TgstatChannelCrawlerUrl{Status: consts.TaskSuccess}).Update()
+		}
+	}()
+
 	if in.Url == "" {
 		return gerror.New("请输入正确的url")
 	}
@@ -203,7 +300,7 @@ func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *crawleri
 			collect.Subscribers = extractSubscribers(headSelect.Find(".font-14.text-dark").Text())
 			collect.Avatar = headSelect.Find("img").AttrOr("src", "")
 			// 从完整链接中提取 @ 后面的部分
-			collect.TelegramLink = extractTelegramLink(headSelect.AttrOr("href", ""))
+			collect.TelegramLink, collect.Private = extractTelegramLink(headSelect.AttrOr("href", ""))
 			collect.Type = strings.TrimSpace(headSelect.Find("span[class='border rounded bg-light px-1']").Text())
 			// 提取 PostReach (1 post reach)
 			postReachText := s.Find(".col.col-4.pt-1").Eq(1).Find("h4.font-16.font-sm-18").Text()
@@ -217,16 +314,29 @@ func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *crawleri
 			list = append(list, collect)
 		})
 
-		// 保存收集的数据到数据库
+		// 保存收集的数据到数据库 - 分批插入，每次300个
 		if len(list) > 0 {
-			_, _ = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).InsertIgnore(list)
+			batchSize := 300
+			for i := 0; i < len(list); i += batchSize {
+				end := i + batchSize
+				if end > len(list) {
+					end = len(list)
+				}
+				batch := list[i:end]
+				_, err = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).InsertIgnore(batch)
+				if err != nil {
+					fmt.Printf("TgstatChannel批量插入第%d-%d条记录失败: %v\n", i+1, end, err)
+				} else {
+					fmt.Printf("TgstatChannel成功插入第%d-%d条记录，共%d条\n", i+1, end, end-i)
+				}
+			}
 		}
 
 	})
 	c.SetRequestTimeout(20 * time.Second)
 	// 访问起始页面
 	// https://tgstat.com/ratings/channels?sort=members
-	c.Visit(in.Url)
+	err = c.Visit(in.Url)
 	return
 }
 
@@ -250,7 +360,14 @@ func extractNumber(text string) string {
 	// 处理带k单位的数字，如 "337.4k"
 }
 
-func extractTelegramLink(fullLink string) string {
+func extractTelegramLink(fullLink string) (string, int) {
+	var respFlag int
+	flag := gstr.Contains(fullLink, "@")
+	if flag {
+		respFlag = 1
+	} else {
+		respFlag = 0
+	}
 	// 从链接中提取 channel 和 stat 之间的值
 	if strings.Contains(fullLink, "/channel/") && strings.Contains(fullLink, "/stat") {
 		// 找到 /channel/ 的位置
@@ -264,9 +381,9 @@ func extractTelegramLink(fullLink string) string {
 				// 提取 channel 和 stat 之间的值
 				channelName := fullLink[start : start+statIndex]
 				// 去掉 @ 符号
-				return strings.TrimPrefix(channelName, "@")
+				return strings.TrimPrefix(channelName, "@"), respFlag
 			}
 		}
 	}
-	return fullLink
+	return fullLink, respFlag
 }
