@@ -81,3 +81,10 @@ type StartRatingReq struct {
 
 type StartRatingRes struct {
 }
+
+type TestCrawlerReq struct {
+	g.Meta `path:"/tgstatChannel/testCrawler" method:"post" tags:"tgstat频道" summary:"爬虫tgstat开始测试频道"`
+}
+
+type TestCrawlerRes struct {
+}

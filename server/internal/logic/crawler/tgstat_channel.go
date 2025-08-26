@@ -9,6 +9,7 @@ package crawler
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/util/grand"
 	"hotgo/internal/consts"
 	"hotgo/internal/dao"
 	"hotgo/internal/library/hgorm/handler"
@@ -261,6 +262,7 @@ func (s *sCrawlerTgstatChannel) StartRating(ctx context.Context) (err error) {
 
 	for _, inp := range list {
 		s.CrawlerChannel(ctx, inp)
+		time.Sleep(grand.D(2, 5) * time.Second)
 	}
 	return
 }
@@ -284,6 +286,9 @@ func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *entity.T
 	// 向 API 发送请求
 	c.OnRequest(func(r *colly.Request) {
 		fmt.Println("发送请求到：", r.URL)
+	})
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(err.Error())
 	})
 	list := make([]entity.TgstatChannel, 0)
 	// 处理 API 返回的数据

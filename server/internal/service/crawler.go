@@ -31,6 +31,8 @@ type (
 		CrawlerChannelUrl(ctx context.Context, in *crawlerin.TgstatChannelCrawlerChannelInp) (err error)
 		// StartRating 开始爬虫
 		StartRating(ctx context.Context) error
+		// TestCrawler 测试爬虫
+		TestCrawler(ctx context.Context) error
 	}
 )
 

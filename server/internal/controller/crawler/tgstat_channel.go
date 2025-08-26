@@ -75,3 +75,8 @@ func (c *cTgstatChannel) StartRating(ctx context.Context, req *tgstatchannel.Sta
 	err = service.CrawlerTgstatChannel().StartRating(ctx)
 	return
 }
+
+func (c *cTgstatChannel) testCrawler(ctx context.Context, req *tgstatchannel.TestCrawlerReq) (res *tgstatchannel.TestCrawlerRes, err error) {
+	err = service.CrawlerTgstatChannel().TestCrawler(ctx)
+	return
+}
