@@ -72,11 +72,18 @@ func (c *cTgstatChannel) CrawlerChannelUrl(ctx context.Context, req *tgstatchann
 }
 
 func (c *cTgstatChannel) StartRating(ctx context.Context, req *tgstatchannel.StartRatingReq) (res *tgstatchannel.StartRatingRes, err error) {
-	err = service.CrawlerTgstatChannel().StartRating(ctx)
+	//err = service.CrawlerTgstatChannel().StartRating(ctx)
+	err = service.CrawlerTgstatChannel().TestAStock(ctx)
+
 	return
 }
 
 func (c *cTgstatChannel) testCrawler(ctx context.Context, req *tgstatchannel.TestCrawlerReq) (res *tgstatchannel.TestCrawlerRes, err error) {
 	err = service.CrawlerTgstatChannel().TestCrawler(ctx)
+	return
+}
+
+func (c *cTgstatChannel) testAStock(ctx context.Context, req *tgstatchannel.TestAStockReq) (res *tgstatchannel.TestAStockRes, err error) {
+	err = service.CrawlerTgstatChannel().TestAStock(ctx)
 	return
 }

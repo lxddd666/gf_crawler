@@ -33,6 +33,8 @@ type (
 		StartRating(ctx context.Context) error
 		// TestCrawler 测试爬虫
 		TestCrawler(ctx context.Context) error
+		// 测试A股票
+		TestAStock(ctx context.Context) error
 	}
 )
 
