@@ -20,6 +20,7 @@ import (
 	"hotgo/internal/service"
 	"hotgo/utility/convert"
 	"hotgo/utility/excel"
+	"hotgo/utility/simple"
 	"net/url"
 	"strings"
 	"time"
@@ -254,16 +255,19 @@ func replaceSortParam(rawURL, newValue string) (string, error) {
 }
 
 func (s *sCrawlerTgstatChannel) StartRating(ctx context.Context) (err error) {
-	var list []*entity.TgstatChannelCrawlerUrl
-	err = dao.TgstatChannelCrawlerUrl.Ctx(ctx).WhereNot(dao.TgstatChannelCrawlerUrl.Columns().Status, consts.TaskSuccess).Scan(&list)
-	if err != nil {
-		return
-	}
+	simple.SafeGo(gctx.New(), func(ctx context.Context) {
+		var list []*entity.TgstatChannelCrawlerUrl
+		err = dao.TgstatChannelCrawlerUrl.Ctx(ctx).WhereNot(dao.TgstatChannelCrawlerUrl.Columns().Status, consts.TaskSuccess).Scan(&list)
+		if err != nil {
+			return
+		}
 
-	for _, inp := range list {
-		s.CrawlerChannel(ctx, inp)
-		time.Sleep(grand.D(2, 5) * time.Second)
-	}
+		for _, inp := range list {
+			s.CrawlerChannel(gctx.New(), inp)
+			time.Sleep(grand.D(5, 8) * time.Second)
+		}
+		return
+	})
 	return
 }
 
@@ -318,24 +322,30 @@ func (s *sCrawlerTgstatChannel) CrawlerChannel(ctx context.Context, in *entity.T
 			// 将收集的数据添加到列表中
 			list = append(list, collect)
 		})
-
-		// 保存收集的数据到数据库 - 分批插入，每次300个
-		if len(list) > 0 {
-			batchSize := 300
-			for i := 0; i < len(list); i += batchSize {
-				end := i + batchSize
-				if end > len(list) {
-					end = len(list)
-				}
-				batch := list[i:end]
-				_, err = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).InsertIgnore(batch)
-				if err != nil {
-					fmt.Printf("TgstatChannel批量插入第%d-%d条记录失败: %v\n", i+1, end, err)
-				} else {
-					fmt.Printf("TgstatChannel成功插入第%d-%d条记录，共%d条\n", i+1, end, end-i)
-				}
-			}
+		if len(list) == 0 {
+			err = gerror.New("没有找到数据")
+			return
 		}
+		// 保存收集的数据到数据库 - 分批插入，每次300个
+		for _, cralwer := range list {
+			_, _ = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).Insert(cralwer)
+		}
+		//if len(list) > 0 {
+		//	batchSize := 300
+		//	for i := 0; i < len(list); i += batchSize {
+		//		end := i + batchSize
+		//		if end > len(list) {
+		//			end = len(list)
+		//		}
+		//		batch := list[i:end]
+		//		_, err = s.Model(ctx).FieldsEx(dao.TgstatChannel.Columns().Id).InsertIgnore(batch)
+		//		if err != nil {
+		//			fmt.Printf("TgstatChannel批量插入第%d-%d条记录失败: %v\n", i+1, end, err)
+		//		} else {
+		//			fmt.Printf("TgstatChannel成功插入第%d-%d条记录，共%d条\n", i+1, end, end-i)
+		//		}
+		//	}
+		//}
 
 	})
 	c.SetRequestTimeout(20 * time.Second)
