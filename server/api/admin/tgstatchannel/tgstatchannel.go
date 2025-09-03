@@ -88,3 +88,11 @@ type TestCrawlerReq struct {
 
 type TestCrawlerRes struct {
 }
+
+type TestAStockReq struct {
+	g.Meta `path:"/tgstatChannel/testAStockReq" method:"post" tags:"tgstat频道" summary:"测试A股"`
+	crawlerin.TgstatChannelCrawlerChannelInp
+}
+
+type TestAStockRes struct {
+}
